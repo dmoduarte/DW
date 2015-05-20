@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?> <!-- XML file header -->
+
+<!-- Define the Ant project name and default task. The project name goes into a
+     variable named "ant.project.name". The default task is the one that will be
+     run automatically by choosing Run As -> Ant Build from the context menu in
+     Eclipse  -->
+<project name="DWProject" default="package">
+
+   <!-- Set variables for folder paths that will be used later in the script.
+        The "name" attribute defines the name of the variable (e.g source.dir).
+        The "location" attribute is the relative path of the folder (from the
+        project root). -->
+   <property name="source.dir" location="src"/>
+   <property name="bin.dir" location="bin"/>
+   <property name="lib.dir" location="lib"/>
+   <property name="build.dir" location="build"/>
+   <property name="dist.dir" location="dist"/>
+
+   <!-- Define the "package" task, which depends on the "clean" task (meaning 
+        "clean" will be run automatically when "package" is invoked). -->
+   <target name="package" depends="clean" description="Remake the jarfile from scratch">
+
+      <!-- Make a folder with the name in the build.dir variable ("/build") -->
+      <mkdir dir="${build.dir}" />
+
+      <!-- Make the "/dist" folder, into which the compiled JAR will go -->
+      <mkdir dir="${dist.dir}" />
+
+      <!-- Unzip any JAR files from the "/lib" folder into "/build" -->
+      <unzip dest="${build.dir}">
+         <fileset dir="${lib.dir}" includes="*.jar" />
+      </unzip>
+
+      <!-- Copy everything from "/bin" to "/build" -->
+      <copy todir="build">
+         <fileset dir="${bin.dir}" includes="**/*.*" />
+      </copy>
+
+      <!-- Set the location of the JAR manifest in the "manifest.mf"
+           variable. -->
+      <property name="manifest.mf" location="${build.dir}/META-INF/MANIFEST.MF"/>
+      <!-- Create a JAR file from everything in "/build".  Set the JAR
+           manifest to the file at the location contained in the
+           "manifest.mf" variable. The completed JAR will be located in
+           the "/dist" folder and will be named "MyProject.jar". --> 
+      <jar destfile="${dist.dir}/${ant.project.name}.jar" duplicate="preserve" manifest="${manifest.mf}">
+         <fileset dir="${build.dir}"/>
+      </jar>
+
+      <!-- Delete the "/build" folder -->
+      <delete dir="${build.dir}"/>
+   </target>
+
+   <!-- Define the "clean" task, which deletes any old "/build"
+        and "/dist" folders -->
+   <target name="clean" description="Delete the working build and distribution folders">
+      <!-- Delete the "/build" folder -->
+      <delete dir="${build.dir}"/>
+      <!-- Delete the "/dist" folder -->
+      <delete dir="${dist.dir}"/>
+   </target>
+</project>

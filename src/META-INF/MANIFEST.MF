@@ -1,0 +1,2 @@
+ Manifest-Version: 1.0
+ Main-Class: [the canonical name of the class you want to launch, e.g. com.mycompany.myproject.MyApp]

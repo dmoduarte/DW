@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<model type = "OLTP">
+	<tables>
+	    <table name="Table_A" classf = "none">
+	      <columns>
+	        <column name="attribute_A1" type = "varchar"/>
+	        <column name="attribute_A2" type = "char"/>
+	      </columns>
+	      <primaryKey>
+	        <key ref="attribute_A1"/>
+	      </primaryKey>
+	      <relationships>
+	      </relationships>
+	    </table>
+	    <table name="Table_B" classf = "component">
+	      <columns>
+	        <column name="attribute_B1" type = "varchar"/>
+	        <column name="attribute_B2" type = "varchar"/>
+	      </columns>
+	      <primaryKey>
+	        <key ref="attribute_B2"/>
+	      </primaryKey>
+	      <relationships>
+	     	<relationship id = "1">
+	          <foreignKey name = "attribute_B3">
+	            <primaryKeyTable name="Table_A">
+	            	<column name="attribute_A1"/>
+	          	</primaryKeyTable>
+	          </foreignKey>         
+	        </relationship>
+	      </relationships>
+	    </table>
+	    <table name="Table_C" classf = "transactional">
+	      <columns>
+	        <column name="attribute_C1" type = "varchar"/>
+	        <column name="attribute_C2" type = "int"/>
+	      </columns>
+	      <primaryKey>
+	        <key ref="attribute_C1"/>
+	      </primaryKey>
+	      <relationships>
+	     	<relationship id = "2">
+	          <foreignKey name = "attribute_C3">
+	            <primaryKeyTable name="Table_B">
+	            	<column name="attribute_B2"/>
+	          	</primaryKeyTable>
+	          </foreignKey>         
+	        </relationship>
+	      </relationships>
+	    </table>
+	  </tables>
+	  <hierarchies>
+	  	<hierarchy id = "1">
+	  			<table name="Table_A"/>
+	  			<table name="Table_B"/>
+	  			<table name="Table_C"/>
+	  	</hierarchy>
+	  </hierarchies>
+  </model>
+  

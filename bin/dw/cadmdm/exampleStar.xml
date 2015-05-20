@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<model type = "MDM">
+	<Dimensions>
+		<Dimension name = "Dimension_B" idRef = "1">
+		 <attribute name = "attributeD1" type = "char"/>
+		 <attribute name = "attributeD2" type = "char"/>
+		</Dimension>	
+	</Dimensions>
+	<schema id = "1">
+		<factTable name = "Fact_TableA">
+			
+			<metrics>
+			     <attribute name= "amount" aggregator = "SUM"/>
+			</metrics>
+			
+			<DimensionUsage idRef = "1">
+				<level id = "attributeD1" type = "int" aggregator = "SUM"/>
+			</DimensionUsage>
+	
+		</factTable>
+	</schema>
+</model>
+
+<!--
+ <Dimensions>
+		<Dimension name = "Dimension_B" idRef = 1>
+		 <hierarchy id = 1>
+			 <level name = "YEAR"/>
+			 <level name = "QUARTER"/>
+		 </hierarchy>
+		</Dimension>
+	
+	</Dimensions>
+-->
