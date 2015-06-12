@@ -1,6 +1,8 @@
 package dw.cadmdm;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -11,14 +13,14 @@ public class Graph {
 	
 	public Graph(List<Table> nodes){
 		this.dictionary = createDictionary(nodes);
-		this.adj = createAdjacencyMatrix(dictionary, nodes);
+		this.adj = createAdjacencyMatrix(dictionary);
 	}
 	
 	public Map<Integer,Table> getIdDictionary(){return dictionary;}
 	
 	public int[][] getAdjMatrix(){return adj;}
 	
-	private int[][] createAdjacencyMatrix(Map<Integer, Table> dictionary, List<Table> nodes) {
+	private int[][] createAdjacencyMatrix(Map<Integer, Table> dictionary) {
 		this.adj = new int[dictionary.size()][dictionary.size()];
 		
 		
@@ -29,7 +31,7 @@ public class Graph {
 				Table t2 = dictionary.get(j);
 				
 				if(t != null && t2 != null)
-					this.adj[i][j] += (t.hasRelationshipWith(t2.getName())) ? 1 : 0;
+					this.adj[i][j] += (t.hasRelationshipWith(t2.getName())) ? t.qntRelationship(t2.getName()) : 0;
 				else
 					System.out.println("huehue");
 				
@@ -37,6 +39,18 @@ public class Graph {
 			}
 		
 		return adj;
+	}
+	
+	public Table getNode(String name){
+		Iterator<Table> it = dictionary.values().iterator();
+		
+		while(it.hasNext()){
+			Table t = it.next();
+			if(t.getName().equals(name))
+				return t;
+		}
+		return null;
+		
 	}
 	
 	private Map<Integer, Table> createDictionary(List<Table> nodes) {
@@ -47,6 +61,36 @@ public class Graph {
 		}
 		
 		return dictionary;
+	}
+
+	public void removeTable(Table table) {
+		Table removal = dictionary.remove(table.getId());
+		List<Table> update = new ArrayList<Table>();
+		if(removal != null){
+			Iterator<Table> it = dictionary.values().iterator();
+			while(it.hasNext()){
+				Table next = it.next();
+				if(next.getId()>removal.getId())
+					next.setId(next.getId()-1);
+				
+				update.add(next);
+			}
+			dictionary = this.createDictionary(update);
+			this.createAdjacencyMatrix(dictionary);
+		}
+		
+	}
+
+	public List<Table> transactionalEntitites() {
+		List<Table> result = new ArrayList<Table>();
+		Iterator<Table> it = this.getIdDictionary().values().iterator();
+		while(it.hasNext()){
+			Table t = it.next();
+			if(t.isTransaction()){
+				result.add(t);
+			}
+		}
+		return result;
 	}
 	
 	

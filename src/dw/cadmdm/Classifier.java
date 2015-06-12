@@ -1,51 +1,102 @@
 package dw.cadmdm;
 
 import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Queue;
 
 public class Classifier {
 	
-	//Default config
-	public final double MANYFKPERCENTAGE = 100;//dos atributos foreign key 100 % sao de relaçoes 1:N
-	public final double MEASURESPERCENTAGE = 100;//dos atributos que nao sao keys 100% sao numericos
-	
-	//heuristis
-	private double percFK; //no unique constraints
-	private double percMeasure;
+	private Graph currentModel;
 	
 	public Classifier(){
-		this.percFK = MANYFKPERCENTAGE;
-		this.percMeasure = MEASURESPERCENTAGE;
+		this.currentModel = null;
 	}
 	
-	public void classify(Graph model){
-		System.out.println("ssss");
-		//Iterator<Table> it = model.getIdDictionary().values().iterator();
-		//while(it.hasNext()){
-		System.out.println(model.getIdDictionary().size());
-		for(int i = 0; i<model.getIdDictionary().size(); i++){	
-			//Table t = it.next();
-			Table t = model.getIdDictionary().get(i);
-			System.out.println("yes");
-			if(t.getAllforeignKeys().size() > 0){
-				
-				if(t.hasNumeric()){
-					
-					if(t.hasDateTypes() || isRelatedWithDate(t) )
-						t.setToTransaction();
-					else
-						t.setToComponent();
-						
-				}else
-					t.setToComponent();
-				
+	public void classify(Table t) {//Table t manually classified as transaction
+		setTransaction(t);
+	}
+	
+	public int classify(Graph model){
+		int trFound = 0;
+		currentModel = model;
+		Iterator<Table> it = currentModel.getIdDictionary().values().iterator();
+		while(it.hasNext()){
+			Table t = it.next();
+			if(t.isTransaction())
+				continue;
+			if(verifyTransaction(t)){
+				setTransaction(t);
+				trFound++;
 			}
-			else //N importa fk's, logo e' um classificador
-				t.setToClassifier();
 		}
+		return trFound;
+	}
+
+	private void setTransaction(Table t) {
+		
+		List<String> components = t.setToTransaction();
+		boolean[]explored = new boolean [currentModel.getIdDictionary().size()];
+		
+		for(String tname : components){//directly related tables are set to component
+			Table component = currentModel.getNode(tname);
+			setComponent(component);
+			BFS(component,explored);
+		}
+	}
+
+	private void setComponent(Table t) {
+			t.setToComponent();
+	}
+	
+	/**
+	 * Breadth First Search Algorithm
+	 * @param root
+	 * @param explored
+	 */
+	private void BFS(Table root, boolean[]explored) {
+		
+		Queue<Table> queue = new LinkedList<Table>();
+		for(ForeignKey outFK : root.getAllforeignKeys()){
+			Table child = currentModel.getNode(outFK.getRefTable());
+			if(!explored[child.getId()])
+				queue.add(child);
+		}
+		
+		while(!queue.isEmpty()){
+			
+			Table current = queue.remove();
+			
+			if(!explored[current.getId()] && !verifyTransaction(current) && !current.isTransaction()){ 
+				current.setToClassifier();
+				explored[current.getId()] = true;
+				for(ForeignKey outFK : current.getAllforeignKeys()){
+					Table adjTable = currentModel.getNode(outFK.getRefTable());
+					if(!explored[adjTable.getId()])
+						queue.add(adjTable);
+				}
+			}
+		}
+		
+	}
+
+
+	public boolean verifyTransaction(Table t) {
+		if(t.getAllforeignKeys().size() > 0){
+			if(t.hasNumeric()){
+				if(t.hasDateTypes() || isRelatedWithDate(t) ){
+					return true;
+				}
+				return true;
+			}
+		
+		}
+		return false;
 	}
 
 	private boolean isRelatedWithDate(Table t) {
 		return false;
 	}
+
 	
 }

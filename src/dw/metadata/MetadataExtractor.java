@@ -41,11 +41,14 @@ public static List<Table> fetchMetaData(Connection conn) throws SQLException{
 	 	ResultSet result = metaData.getTables(null,null,null,new String[] {"TABLE"});
 	 	int counter;
 	    for(counter = 0;result.next();counter++){
+	    	
 	    	 List <ForeignKey> fks = new ArrayList<ForeignKey>();
 	    	 List <String> fksName = new ArrayList<String>();
 	    	 List <Attribute> pks = new ArrayList<Attribute>();
 	    	 List <String> pksName = new ArrayList<String>();
 	    	 List<Attribute> attributes = new ArrayList<Attribute>();
+	    	 List<ExportedKey> exportedKeys = new ArrayList<ExportedKey>();
+	    	 
 		     String tableName = result.getString(3);
 		     
 		     builder.append(tableName + "( ");
@@ -55,6 +58,7 @@ public static List<Table> fetchMetaData(Connection conn) throws SQLException{
 		     while(c.next()){
 		         String fkTableName = c.getString("FKTABLE_NAME");
 		         String fkColumnName = c.getString("FKCOLUMN_NAME");
+		         exportedKeys.add(new ExportedKey(fkTableName,fkColumnName));
 		         System.out.println(fkColumnName);
 		         System.out.println(fkTableName);
 		     }
@@ -104,8 +108,7 @@ public static List<Table> fetchMetaData(Connection conn) throws SQLException{
 	     builder.append("----------------");
 	     builder.append("\n");
 	     Table t;
-	     tables.add((t = new Table(pks,attributes,fks,tableName,counter)));
-	     System.out.println("NYEZZZZ: "+fks.size());
+	     tables.add((t = new Table(pks,attributes,fks,exportedKeys,tableName,counter)));
 	     t.printFK();
 	     System.out.println("has measures: "+t.numericDataTypeNr());
 	    }

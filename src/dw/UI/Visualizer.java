@@ -1,42 +1,33 @@
 package dw.UI;
 
+import java.awt.BorderLayout;
 import java.awt.EventQueue;
+import java.awt.GridLayout;
 
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
-
-import java.awt.CardLayout;
-
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JDialog;
+import javax.swing.JLabel;
 import javax.swing.JMenuBar;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
+import javax.swing.JOptionPane;
+import javax.swing.JPopupMenu;
+import javax.swing.JTextField;
 import javax.swing.JToolBar;
 
-import com.mxgraph.layout.mxCircleLayout;
-import com.mxgraph.layout.mxFastOrganicLayout;
-import com.mxgraph.layout.mxGraphLayout;
-import com.mxgraph.model.mxCell;
-import com.mxgraph.swing.mxGraphComponent;
-import com.mxgraph.util.mxConstants;
-import com.mxgraph.view.mxGraph;
-import com.mxgraph.view.mxStylesheet;
-
 import dw.cadmdm.Controler;
-import dw.cadmdm.Graph;
 import dw.cadmdm.Table;
 
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.awt.Color;
-import java.util.HashMap;
+import java.awt.event.MouseListener;
 import java.util.List;
-import java.util.Map;
-
-
 
 public class Visualizer extends JFrame {
 
@@ -45,10 +36,9 @@ public class Visualizer extends JFrame {
 	 */
 	private static final long serialVersionUID = 1L;
 	private UITree tree;
-	private mxGraphComponent graph;
+	//private mxGraphComponent presentationModel;
+	private MouseListener l;
 	private Controler app;
-	mxCell [] v;
-
 
 	/**
 	 * Launch the application.
@@ -72,280 +62,137 @@ public class Visualizer extends JFrame {
 	public Visualizer() {
 		
 		app = new Controler();
-		tree = new UITree();
+		tree = new UITree(this);
+		l = null;
+		loadData();
 		modelPresentation();
-		
-		/*
-		JPanel EditClassf = new JPanel();
-		root.add(EditClassf, "name_2774569172174");
-		EditClassf.setLayout(null);
-		
-		final JPanel editpanel = new JPanel();
-		editpanel.setBounds(607, 607, 153, 37);
-		contentPane.add(editpanel);
-		
-		JButton btnEdit = new JButton("Edit Classification");
-		editpanel.add(btnEdit);
-		
-		JToolBar toolBar = new JToolBar();
-		toolBar.setBounds(0, 0, 401, 30);
-		contentPane.add(toolBar);
-		
-		JMenuBar menuBar = new JMenuBar();
-		toolBar.add(menuBar);
-		
-		JMenu mnOptions = new JMenu("Options");
-		menuBar.add(mnOptions);
-		
-		JMenuItem mntmImportMetadata = new JMenuItem("Import MetaData");
-		mnOptions.add(mntmImportMetadata);
-		
-		
-		btnEdit.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-			}
-		});*/
-		
-	
 	
 	}
 	
-	private void modelPresentation() {
-		insertGraph(tree.getModelPresentationPane());
-		
-		CardLayout card = (CardLayout) tree.getRootPane().getLayout();
-		card.show(tree.getRootPane(), "ModelPanel");
-	
-		tree.getNextPanelButton().addMouseListener(new MouseAdapter() {
-			@Override
-			public void mouseClicked(MouseEvent e) {
-				//passar para proximo card
-				classifPresentation();
-			}
-		});
-		
-		
-	}
-	
-	private void classifPresentation(){
-		app.classify();
-		System.out.println("wut");
-		tree.getClassifPresentationPane().add(this.refreshGraph(),"ClassifiedModel");
-		
-		CardLayout card = (CardLayout) tree.getRootPane().getLayout();
-		card.show(tree.getRootPane(), "ClassificationPanel");
-		
-		
-		tree.getNextPanelButton().addMouseListener(new MouseAdapter() {
-			@Override
-			public void mouseClicked(MouseEvent e) {
-				//passar para proximo card
-				//classifPresentation();
-			}
-		});
-		
-	}
-	
-	private void insertGraph(JPanel panel){
-		Graph g = null;
+	private void loadData(){
 		try {
 			List<Table> tables = app.extractMetaData();
-			g = app.initGraph(tables);
+			app.initGraph(tables);
+			tree.modelPanel.startModel(app.graph);
+			tree.loadSchemaTree();
+			//loadGraph(tree.getModelPresentationPane());
+			//loadSchemaTree(tree.getSchemaPanel());
 		} catch (Exception e1) {
 			e1.printStackTrace();
 		}
-		graph = graph(panel,g);
-		panel.add(graph, "ModelGraph");
 	}
 
-	private mxGraphComponent graph(JPanel ModelPanel, Graph g){
-		mxGraph graph  = new mxGraph();
-		if(g !=  null){
-			
-			Object parent = graph.getDefaultParent();
-			v = new mxCell[g.getIdDictionary().size()];
-			
-			graph.getModel().beginUpdate();
-			try
-			{
+
+	private void modelPresentation() {
+		l = null;
+	
+		tree.nextButton.addMouseListener(l = new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent e) {
 				
-				for(int i = 0; i < g.getIdDictionary().size(); i++){
-					
-					mxCell v1;
-					if(v[i] == null){
-					
-					v1 = (mxCell) graph.insertVertex(parent, null, g.getIdDictionary().get(i).getName(), 20+i, 20+i, 80+i,
-							30+i);
-					v1.setId(String.valueOf(i));
-					v[i] = v1;
-					}else
-						v1 = v[i];
-					
-					for(int j = 0; j < g.getIdDictionary().size(); j++){
-						//System.out.println("Table : "+g.getIdDictionary().get(i).getName()+" has rel with: "+g.getIdDictionary().get(j).getName()+": "+ (g.getAdjMatrix()[i][j]>0) );
-						if(g.getAdjMatrix()[i][j]>0){
-							
-							mxCell v2;
-							
-							if(v[j]==null){
-								 v2 = (mxCell) graph.insertVertex(parent, null, g.getIdDictionary().get(j).getName(), 240+j, 150+j,
-										80+j, 30+j);
-								 v2.setId(String.valueOf(j));
-								 v[j] = v2;
-							}else
-								 v2 = v[j];
-							
-							graph.insertEdge(parent, null, "Edge", v1, v2);
-						}
+				tree.nextButton.removeMouseListener(l);
+				tree.setLoadingSpin();
+				int trFound = app.classify();
+				if(trFound == 0){
+					tree.setErrorDialog(UITree.NOTRANSACTIONFOUND);
 					}
+				tree.unsetLoadingSpin();
+				classifPresentation(trFound);
+			}
+		});
+		
+		
+	}
+	
+	private void classifPresentation(final int foundTransactions){
+		tree.nextButton.removeMouseListener(l);
+		tree.modelPanel.refreshModel();
+		
+		tree.nextButton.addMouseListener( l = new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent e) {
+
+				tree.nextButton.removeMouseListener(l);
+				if(foundTransactions == 0){
+					tree.setErrorDialog(UITree.NOTRANSACTIONFOUND);
+					classifPresentation(foundTransactions);
+					}else{
+						tree.setLoadingSpin();
+						List<String> msgs = app.checkClassification();
+						if(!msgs.isEmpty()){
+							tree.unsetLoadingSpin();
+							tree.showWarningMessages(msgs);
+							classifPresentation(foundTransactions);
+						}
+						else{
+							app.computeHierarchies();
+							app.colapse();
+							tree.unsetLoadingSpin();
+							colapsePresentation();
+						}
+						
 				}
-				//mxGraphLayout circleLayout = new mxCircleLayout(graph);
-				//circleLayout.execute(parent);
-				
-				mxGraphLayout organicLayout = new mxFastOrganicLayout(graph);
-				organicLayout.execute(parent);
-				
-				System.out.println("visualizer nr of tables: "+g.getIdDictionary().size());
-				
-			    // Settings for edges
-			    Map<String, Object> edge = new HashMap<String, Object>();
-			    edge.put(mxConstants.STYLE_ROUNDED, true);
-			    edge.put(mxConstants.STYLE_ORTHOGONAL, false);
-			    edge.put(mxConstants.STYLE_EDGE, mxConstants.EDGESTYLE_ENTITY_RELATION);
-			    edge.put(mxConstants.STYLE_SHAPE, mxConstants.SHAPE_CONNECTOR);
-			    edge.put(mxConstants.STYLE_ENDARROW, mxConstants.NONE);
-			   
-			   // edge.put(mxConstants.STYLE_VERTICAL_ALIGN, mxConstants.ALIGN_MIDDLE);
-			   // edge.put(mxConstants.STYLE_ALIGN, mxConstants.ALIGN_CENTER);
-			    edge.put(mxConstants.STYLE_STROKECOLOR, "#000000"); // default is #6482B9
-			    edge.put(mxConstants.STYLE_FONTCOLOR, "#446299");
-			    
-			    mxStylesheet edgeStyle = new mxStylesheet();
-			    edgeStyle.setDefaultEdgeStyle(edge);
-			    graph.setStylesheet(edgeStyle);
-				
-				
 			}
-			finally
-			{
-				graph.getModel().endUpdate();
-			}
-			
-			graph.setCellsEditable(false);
-		    graph.setAllowDanglingEdges(false);
-		    graph.setAllowLoops(false);
-		    graph.setCellsDeletable(false);
-		    graph.setCellsCloneable(false);
-		    graph.setCellsDisconnectable(false);
-		    graph.setDropEnabled(false);
-		    graph.setSplitEnabled(false);
-		    graph.setCellsBendable(false);
-		    graph.setLabelsClipped(false);
-	
-			}
-		mxGraphComponent graphComponent = new mxGraphComponent(graph);
-		//graphComponent.setSwimlaneSelectionEnabled(false);
-		//graphComponent.setPageBreaksVisible(false);
-		//graphComponent.setInvokesStopCellEditing(false);
-		//graphComponent.setAntiAlias(false);
-		//graphComponent.setAutoScroll(false);
-		//graphComponent.setDragEnabled(false);
-		//graphComponent.setExportEnabled(false);
-		//graphComponent.setFoldingEnabled(false);
-		//graphComponent.setCenterPage(false);
-		//graphComponent.setAutoExtend(false);
-		//graphComponent.setPanning(false);
-		//graphComponent.setImportEnabled(false);
-		//graphComponent.setCenterZoom(false);
-		//graphComponent.setConnectable(false);
-		//graphComponent.setEnabled(false);
-		//graphComponent.setEscapeEnabled(false);
-		//graphComponent.setEventsEnabled(false);
-		graphComponent.setGridVisible(true);
-		return graphComponent;
-	}
-	
-	private mxGraphComponent refreshGraph(){
-		mxGraph g = graph.getGraph();
-		//Object[] cells = g.getChildCells(g.getDefaultParent());
+
+		});
 		
-		mxCell[]transac = new mxCell[v.length];
-		mxCell[]comp = new mxCell[v.length];
-		mxCell[]classif = new mxCell[v.length];;
 		
-		int count = 0;
-		for(int i = 0;i<app.getModel().getIdDictionary().size();i++){
-			Table t = app.getModel().getIdDictionary().get(i);
-			if(t.isTransaction()){
-				transac[count] = v[i];
-				count++;
-			}
-		}
-		
-		count = 0;
-		for(int i = 0;i<app.getModel().getIdDictionary().size();i++){
-			Table t = app.getModel().getIdDictionary().get(i);
-			if(t.isComponent()){
-				comp[count] = v[i];
-				count++;
-			}
-		}
-		
-		count = 0;
-		for(int i = 0;i<app.getModel().getIdDictionary().size();i++){
-			Table t = app.getModel().getIdDictionary().get(i);
-			if(t.isClassifier()){
-				classif[count] = v[i];
-				count++;
-			}
-		}
-		
-		g.setCellStyles(mxConstants.STYLE_FILLCOLOR, "red", transac);
-		g.setCellStyles(mxConstants.STYLE_FILLCOLOR, "green", comp);
-		g.setCellStyles(mxConstants.STYLE_FILLCOLOR, "blue", classif);
-		graph.refresh();
-		return graph;
 	}
 	
 	
-	private class UITree{
+	private void colapsePresentation() {
+		tree.nextButton.removeMouseListener(l);
 		
-		private JPanel modelPresentation;
-		private JPanel classificationPresentation;
-		private JPanel contentPane;
-		private JButton nextButton;
-		private JPanel root;
-		private JPanel nextpanel;
-		private JButton next;
+		tree.modelPanel.refreshModel();
 		
 		
+	}
+	
+	
+	
+	class UITree{
+		
+		public static final int FRAMEWIDTH = 1200;
+		public static final int FRAMEHEIGHT = 700;
+		public static final int TRANSACTIONALMENU = 0;
+		public static final int NONTRANSACTIONALMENU = 1;
+		public static final String NOTRANSACTIONFOUND = "0 Transactional tables were found. User input is required";
+		
+		waitDialog dial;
+		warningDialog warDial;
+		JFrame frame;
+		modelPanel modelPanel;
+		JPanel contentPane;
+		JPanel schemaPanel;
+		JPopupMenu pmenu;
+		JMenuItem transactionalSet;
+		JMenuItem transactionalRemove;
+		JMenuItem transactionalUnset;
+		JPanel nextpanel;
+		JButton nextButton;
 		
 		//Init UI Components
-		public UITree(){
-			
+		public UITree(JFrame frame){
+			this.frame = frame;
 			//Init JFrame
-			setResizable(false);
-			setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-			setBounds(100, 100, 946, 682);
+			frame.setResizable(false);
+			frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+			frame.setBounds(0, 0, FRAMEWIDTH, FRAMEHEIGHT);
 			
 			//Init Components
-			initContentPane();
-			initNextButtonPaneContainer();
-			initRootPane();
-			initModelPresentationPane();
-			initClassifPresentationPane();
-			
+			initContent();
+			initModelPanel();
 		}
 		
-		private void initContentPane() {
+		public void initContent() {
 			this.contentPane = new JPanel();
 			this.contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
-			setContentPane(contentPane);
+			frame.setContentPane(contentPane);
 			this.contentPane.setLayout(null);	
 			
 			JToolBar toolBar = new JToolBar();
-			toolBar.setBounds(0, 0, 401, 30);
-			contentPane.add(toolBar);
+			toolBar.setBounds(0, 0, (int) Math.round(0.08*FRAMEWIDTH), (int) Math.round(0.04*FRAMEHEIGHT));
+			this.contentPane.add(toolBar);
 			
 			JMenuBar menuBar = new JMenuBar();
 			toolBar.add(menuBar);
@@ -356,62 +203,147 @@ public class Visualizer extends JFrame {
 			JMenuItem mntmImportMetadata = new JMenuItem("Import MetaData");
 			mnOptions.add(mntmImportMetadata);
 			
+			initNextButtonPaneContainer();
 		}
+		
+		public void initModelPanel() {
+			this.modelPanel = new modelPanel(app,this);
+			this.schemaPanel = new JPanel();
+			
+			this.modelPanel.setBounds(270,1,910, 600);
+			this.schemaPanel.setBounds(0,30,290,570);
+			this.contentPane.add(modelPanel);
+			this.contentPane.add(schemaPanel);
+			
+		}
+		
+		public void loadSchemaTree() {
+			new SchemaTree(app.graph,schemaPanel);
+		}
+		
+		public void initPmenu(int menu) {
+			
+			pmenu = new JPopupMenu();
+			if(menu == TRANSACTIONALMENU){
+				transactionalRemove = new JMenuItem("Remove Transaction");
+				transactionalUnset = new JMenuItem("Unset Transaction");
+				
+				pmenu.add(transactionalRemove);
+				pmenu.add(transactionalUnset);
+			}else if(menu == NONTRANSACTIONALMENU){
+				transactionalSet = new JMenuItem("Set to Transaction");
+				pmenu.add(transactionalSet);
+			}
+		}
+		
+		public void setErrorDialog(String msg){
+			//new InfoDialog(msg);
+			JOptionPane.showMessageDialog(frame,msg,"",JOptionPane.ERROR_MESSAGE);
+		}
+		
 
-		private void initNextButtonPaneContainer() {
+		public void initNextButtonPaneContainer() {
 			nextpanel = new JPanel();
-			nextpanel.setBounds(607, 607, 153, 37);
-			next = new JButton("Next");
-			nextpanel.add(next);
+			nextpanel.setBounds(1000, 650, 153, 50);
+			nextButton = new JButton("Next");
+			nextpanel.add(nextButton);
 			contentPane.add(nextpanel);
 			//next.setBounds(770, 610, 111, 23);
 		}
-
-		private void initRootPane() {
-			this.root = new JPanel();
-			this.root.setBounds(10, 41, 910, 555);
-			this.contentPane.add(root);
-			this.root.setLayout(new CardLayout(0, 0));
-		}
-
-		private void initClassifPresentationPane() {
-			this.classificationPresentation = new JPanel();
-			//this.classificationPresentation.setBackground(Color.RED);
-			this.classificationPresentation.setLayout(new CardLayout(0, 0));
-			root.add(this.classificationPresentation, "ClassificationPanel");
-			//this.classificationPresentation.setVisible(false);
+		
+		public void showWarningMessages(List<String> msgs){
+			//this.warDial = new warningDialog(msg);
+			String res = "";
+			for(String msg:msgs){
+				res += msg; 
+			}
+			JOptionPane.showMessageDialog(frame,res,"",JOptionPane.ERROR_MESSAGE);
 		}
 		
-		private void initModelPresentationPane(){
-			this.modelPresentation = new JPanel();
-			this.modelPresentation.setLayout(new CardLayout(0, 0));
-			root.add(this.modelPresentation, "ModelPanel");
-			//this.modelPresentation.setVisible(false);
+		public void setLoadingSpin(){
+			this.dial = new waitDialog();
 		}
 		
-		private JPanel getContentPane(){
+		public void unsetLoadingSpin(){
+			this.dial.unset();
+		}
+		
+		
+		public JPanel getContentPane(){
 			return this.contentPane;
 		}
 		
-		private JPanel getRootPane(){
-			return this.root;
+		public JButton getNextPanelButton(){
+			return this.nextButton;
 		}
 		
-		private JPanel getModelPresentationPane(){
-			return this.modelPresentation;
+		
+		public JPanel getSchemaPanel(){
+			return this.schemaPanel;
 		}
 		
-		private JPanel getClassifPresentationPane(){
-			return this.classificationPresentation;
+		class waitDialog extends JDialog{
+			/**
+			 * 
+			 */
+			public static final long serialVersionUID = -6730979993111146504L;
+			ImageIcon loading;
+			JLabel lab;
+			
+			public waitDialog(){
+				setUndecorated(true);
+				int dialogHeight = (int) Math.round(0.3*FRAMEHEIGHT);
+				int dialogWidth =  (int)Math.round(0.3*FRAMEWIDTH);
+			    int x = (int) Math.round(FRAMEWIDTH/2) - dialogWidth/2;
+				int y = (int) Math.round(FRAMEHEIGHT/2) - dialogHeight/2;
+				setBounds(x,y,dialogWidth,dialogHeight);
+				loading = new ImageIcon("icons/ajax-loader.gif");
+				lab = new JLabel("Please Wait... ", loading, JLabel.CENTER);
+				add(lab);
+				setVisible(true);
+			}
+			
+			public void unset(){
+				removeAll();
+				dispose();
+			}
+			
 		}
 		
-		private JPanel getNextButtonContainer(){
-			return this.nextpanel;
-		}
+		class warningDialog extends JDialog implements ActionListener {
+			  /**
+			 * 
+			 */
+			public static final long serialVersionUID = 1360651079735275408L;
+			public warningDialog(final List<String> msgs) {
+				  
+				int dialogHeight = (int) Math.round(0.3*FRAMEHEIGHT);
+				int dialogWidth =  (int)Math.round(0.3*FRAMEWIDTH);
+			    int x = (int) Math.round(FRAMEWIDTH/2) - dialogWidth/2;
+				int y = (int) Math.round(FRAMEHEIGHT/2) - dialogHeight/2;
+				setBounds(x,y,dialogWidth,dialogHeight);
+			    setLayout(new GridLayout(msgs.size(),0));
+			  
+				for(String msg:msgs){
+					add(new JTextField(msg,JLabel.TRAILING));
+				}
+			    
+			    JPanel buttonPane = new JPanel();
+			    JButton button = new JButton("OK"); 
+			    buttonPane.add(button); 
+			    button.addActionListener(this);
+			    getContentPane().add(buttonPane, BorderLayout.SOUTH);
+			    setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+			    pack(); 
+			    setVisible(true);
+			  }
+			  public void actionPerformed(ActionEvent e) {
+			    setVisible(false); 
+			    dispose(); 
+			  }
+			  
+			}
 		
-		private JButton getNextPanelButton(){
-			return this.next;
-		}
 		
 	}
 	
