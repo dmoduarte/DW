@@ -8,6 +8,7 @@ import java.util.Map;
 
 public class Graph {
 
+	private String name;
 	private Map<Integer,Table> dictionary;
 	private int[][]adj;
 	
@@ -31,11 +32,8 @@ public class Graph {
 				Table t2 = dictionary.get(j);
 				
 				if(t != null && t2 != null)
-					this.adj[i][j] += (t.hasRelationshipWith(t2.getName())) ? t.qntRelationship(t2.getName()) : 0;
-				else
-					System.out.println("huehue");
+					this.adj[i][j] += (t.hasRelationshipWith(t2.getOperationalName())) ? t.qntRelationship(t2.getOperationalName()) : 0;
 				
-				//System.out.println("table "+t.getName() +"table "+t2.getName()+" "+adj[i][j]+" "+t.hasRelationshipWith(t2.getName()));
 			}
 		
 		return adj;
@@ -46,7 +44,7 @@ public class Graph {
 		
 		while(it.hasNext()){
 			Table t = it.next();
-			if(t.getName().equals(name))
+			if(t.getOperationalName().equals(name) || t.getAlias().equals(name))
 				return t;
 		}
 		return null;
@@ -81,6 +79,30 @@ public class Graph {
 		
 	}
 
+	public List<Table> factTables(){
+		List<Table> result = new ArrayList<Table>();
+		Iterator<Table> it = this.getIdDictionary().values().iterator();
+		while(it.hasNext()){
+			Table t = it.next();
+			if(t.isFactTable()){
+				result.add(t);
+			}
+		}
+		return result;
+	}
+	
+	public List<Table> dimensionTables(){
+		List<Table> result = new ArrayList<Table>();
+		Iterator<Table> it = this.getIdDictionary().values().iterator();
+		while(it.hasNext()){
+			Table t = it.next();
+			if(t.isDimension()){
+				result.add(t);
+			}
+		}
+		return result;
+	}
+	
 	public List<Table> transactionalEntitites() {
 		List<Table> result = new ArrayList<Table>();
 		Iterator<Table> it = this.getIdDictionary().values().iterator();
@@ -92,7 +114,22 @@ public class Graph {
 		}
 		return result;
 	}
+
+	public void insertTable(Table t) {
+		this.getIdDictionary().put(t.getId(), t);
+		this.createAdjacencyMatrix(this.getIdDictionary());
+	}
 	
+	public int nextID(){
+		return this.getIdDictionary().values().size();
+	}
+
+	public void setModelName(String DBName) {
+		this.name = DBName;
+	}
 	
+	public String getName(){
+		return this.name;
+	}
 	
 }

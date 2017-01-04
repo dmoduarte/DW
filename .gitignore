@@ -1,0 +1,12 @@
+.git/
+.metadata/
+.settings/
+bin/
+icons/
+.classpath
+.project
+build
+moodyOLTP
+xml1
+xml2
+xml3

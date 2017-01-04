@@ -13,6 +13,10 @@ public class Classifier {
 		this.currentModel = null;
 	}
 	
+	public Classifier(Graph g){
+		this.currentModel = g;
+	}
+	
 	public void classify(Table t) {//Table t manually classified as transaction
 		setTransaction(t);
 	}
@@ -67,7 +71,7 @@ public class Classifier {
 			
 			Table current = queue.remove();
 			
-			if(!explored[current.getId()] && !verifyTransaction(current) && !current.isTransaction()){ 
+			if(!explored[current.getId()]){ 
 				current.setToClassifier();
 				explored[current.getId()] = true;
 				for(ForeignKey outFK : current.getAllforeignKeys()){
@@ -82,12 +86,12 @@ public class Classifier {
 
 
 	public boolean verifyTransaction(Table t) {
-		if(t.getAllforeignKeys().size() > 0){
+		if(t.getAllforeignKeys().size() >= 0){
 			if(t.hasNumeric()){
 				if(t.hasDateTypes() || isRelatedWithDate(t) ){
 					return true;
 				}
-				return true;
+				return false;
 			}
 		
 		}
@@ -95,6 +99,11 @@ public class Classifier {
 	}
 
 	private boolean isRelatedWithDate(Table t) {
+		for(ForeignKey fk : t.getAllforeignKeys()){
+			Table outT = this.currentModel.getNode(fk.getRefTable());
+			if(outT.hasDateTypes())
+				return true;
+		}
 		return false;
 	}
 

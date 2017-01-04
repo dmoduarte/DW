@@ -1,11 +1,14 @@
 package dw.cadmdm;
 
-import java.sql.SQLException;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
+import java.util.Set;
+
 import dw.metadata.*;
 
 public class Controler {
@@ -40,15 +43,56 @@ public class Controler {
 		state = CLASSIFICATION;
 	}
 	
-	public void colapse(){
-		this.state = COLAPSING;
-		//Star-schema...
-		for(MaxHierarchy mh: maxHierarchies){
-			mh.print();
-			//mh.collapse();
-		}
+	public void insertTable(Table t){
+		graph.insertTable(t);
 	}
 	
+	public void colapse(){
+		this.state = COLAPSING;
+		int counter = 0;
+		
+		Set<Table> MDM = new HashSet<Table>();//MultiDimensionalModel entities
+		
+		//star-schema..
+		for(MaxHierarchy mh: maxHierarchies){
+			mh.print();
+			Table dim = mh.collapse();
+			if(dim == null)continue;
+			if(MDM.add(dim)){
+				dim.setId(counter++);
+			}
+		}
+		
+		for(Table dim : MDM){
+			dim.setAlias("DIM_"+dim.getOperationalName());
+			dim.setToDimension();;
+		}
+		
+		for(Table transac : graph.transactionalEntitites()){
+			if(MDM.add(transac)){
+				transac.setId(counter++);
+				transac.setFactTable();
+			}
+		}
+		
+		String modelName = this.graph.getName(); 
+		this.graph = new Graph(new ArrayList<Table>(MDM));
+		this.graph.setModelName(modelName);
+		
+		for(Table transac : graph.factTables())
+			updateForeignKeys(transac);
+
+	}
+	
+
+	private void updateForeignKeys(Table transac) {
+		for(ForeignKey fk : transac.getAllforeignKeys()){
+			Table t = graph.getNode(fk.getRefTable());
+			if(t!= null && t.isDimension())
+				fk.setAliasRefTable("DIM_"+fk.getRefTable());
+		}
+	}
+
 	public void unsetTable(Table parent){
 		
 		boolean [] explored = new boolean [graph.getIdDictionary().size()];
@@ -72,9 +116,9 @@ public class Controler {
 		for(ForeignKey fk : parent.getAllforeignKeys()){
 			Table child = graph.getNode(fk.getRefTable());
 			if(child != null){
+				child.removeExportedKey(parent.getOperationalName());
 				if(parent.isTransaction()){
 					child.unset(child.COMP);
-					child.removeExportedKey(parent.getName());
 					BFS(child,explored);
 				}
 			}
@@ -84,17 +128,8 @@ public class Controler {
 		for(ExportedKey ek : parent.getExportedKeys()){
 			Table child = graph.getNode(ek.getDestTable());
 			if(child != null){
-				child.removeRelationShip(parent.getName());
+				child.removeRelationShip(parent.getOperationalName());
 			}
-			
-		}
-		
-		//set Tables without relationship to default
-		Iterator<Table> it = graph.getIdDictionary().values().iterator();
-		while(it.hasNext()){
-			Table t = it.next();
-			if(t.relationshipQt() == 0)
-				t.setToDefault();
 		}
 
 		graph.removeTable(parent);
@@ -103,7 +138,6 @@ public class Controler {
 	}
 	
 	private void BFS(Table root,boolean[]explored) {
-		System.out.println("----");
 		Queue<Table> queue = new LinkedList<Table>();
 		for(ForeignKey outFK : root.getAllforeignKeys()){
 			Table child = graph.getNode(outFK.getRefTable());
@@ -113,10 +147,9 @@ public class Controler {
 		
 		while(!queue.isEmpty()){
 			Table current = queue.remove();
-			if(!explored[current.getId()] && !classifier.verifyTransaction(current) && !current.isTransaction()){ 
+			if(!explored[current.getId()]){ 
 				current.unset(current.CLASS);
 				explored[current.getId()] = true;
-				System.out.println("current class: "+current.getName()+", current count: "+current.classifier);
 				for(ForeignKey outFK : current.getAllforeignKeys()){
 					Table adjTable = graph.getNode(outFK.getRefTable());
 					if(!explored[adjTable.getId()])
@@ -141,7 +174,7 @@ public class Controler {
 					for(ExportedKey ek:current.getExportedKeys()){
 						Table destT = graph.getNode(ek.getDestTable());
 						if(!destT.isTransaction() && warningMsgs.size() < 10){
-							String msg = "Transactional table "+current.getName()+" exports keys to non-transactional table "+ek.getDestTable()+" \n";
+							String msg = "Transactional table "+current.getOperationalName()+" exports keys to non-transactional table "+ek.getDestTable()+" \n";
 							warningMsgs.add(msg);
 						}
 					}
@@ -149,28 +182,75 @@ public class Controler {
 				}
 			}
 			if(!current.isClassified() && warningMsgs.size() < 10){
-				String msg = "Table "+current.getName()+" could not be classified, will be automatically removed in next phase\n  -> Otherwise delete it or classify it manually\n";
+				String msg = "Table "+current.getOperationalName()+" could not be classified\n";
 				warningMsgs.add(msg);
 			}
+			
+			if(current.getAllforeignKeys().isEmpty() && current.getExportedKeys().isEmpty()){
+				String msg = "Table "+current.getOperationalName()+" Has no Relations\n";
+				warningMsgs.add(msg);
+			}
+			
 		}
 		
 		return warningMsgs;
 	}
 	
-	
-	public void refineModel(){
-		//remove directly related components
-		
+	//TODO
+	public List<Attribute> searchSubDimentions(){
+		List<Attribute> attr = new ArrayList<Attribute>();
+		for(Table t : graph.transactionalEntitites()){
+			for(Attribute a : t.getAttributes()){
+				if(!a.isNumeric())
+					attr.add(a);
+			}
+		}
+		return attr;
 	}
 	
+	public boolean generateScript(Graph model, String path){
+		ScriptGenerator sgen = new ScriptGenerator();
+		try {
+			sgen.generateScript(model, path);
+		} catch (IOException e) {
+			e.printStackTrace();
+			return false;
+		}
+		return true;
+	}
 	
-	
-	public List<Table> loadXML() {
-		return null;
+	public int loadXML(String path) {
+		try {
+			List<Table> bucket = new ArrayList<Table>();
+			XMLLoader xml = new XMLLoader();
+			this.state = xml.LoadOLTPModel(path, bucket);
+			
+			if(state != this.CLASSIFICATION && state != this.PRESENTATION && state != this.COLAPSING)
+				return -1;
+			
+			this.classifier = new Classifier(initGraph(bucket));
+			graph.setModelName(xml.modelName);
+			
+			for(Table t : bucket)
+				t.printTable();
+			
+			return state;
+		} catch (Exception e) {
+			e.printStackTrace();
+			return -1;
+		}
 	}
 
-	public List<Table> extractMetaData() throws SQLException, Exception{
-		return MetadataExtractor.fetchMetaData(MetadataExtractor.getMySqlConnection());
+	public List<Table> extractMetaData(String server,String port,String DB,String userName,String pw){
+		MetadataExtractor mde;
+		try {
+			mde = new MetadataExtractor(server,port,DB,userName,pw);
+			List<Table> result = mde.fetchMetaData();
+			return result;
+		}catch(Exception e){
+			e.printStackTrace();
+			return null;
+		}
 	}
 	
 	public Graph initGraph(List<Table> tables){
@@ -178,8 +258,20 @@ public class Controler {
 		return graph;
 	}
 	
-	public void saveToXML(Graph model){
-		
+	public boolean saveToXML(Graph model, String path){
+		try {
+			XMLCreator xml = new XMLCreator();
+			
+			if(state == PRESENTATION || state == CLASSIFICATION)
+				xml.saveOLTPModel(model,state,path);
+			else if(state == COLAPSING)
+				xml.saveMDModel(model,state, path);
+			
+			return true;
+		} catch (Exception e) {
+			e.printStackTrace();
+			return false;
+		}
 	}
 	
 	public Graph getModel(){
@@ -187,74 +279,46 @@ public class Controler {
 	}
 
 	public void computeHierarchies() {
-		
 		for(Table transac : graph.transactionalEntitites()){
-			
-			for(ForeignKey fk : transac.getAllforeignKeys()){
-				boolean[]explored = new boolean [graph.getIdDictionary().size()];
-				Table comp = graph.getNode(fk.getRefTable());
-				System.out.println("Comp :"+comp.getName());
-				explored[transac.getId()] = true;
-				explored[comp.getId()] = true;
-				List<MaxHierarchy> result = DFS(comp,explored);
-
-				for(MaxHierarchy mh : result )
-					mh.addNode(transac);
-				
-				maxHierarchies.addAll(result);
-			}
-			//System.out.println("Max entities found so far:");
-			//for(MaxHierarchy mh : maxHierarchies){
-				//System.out.println(">"+mh.maximalEntity().getName());
-			//}
+			boolean[]explored = new boolean [graph.getIdDictionary().size()];
+			List<MaxHierarchy> result = DFS(transac,explored);
+			maxHierarchies.addAll(result);
 		}
-		
 	}
 	/**
-	 * Depth First Search starting in a Component and ending at a Maximal Entity 
-	 * Output : a Maximal Hierarchy for Table Component
+	 * Depth First Search starting in a Transactional and ending in a Maximal Entity 
+	 * Output : a set of Maximal Hierarchies for Table Transactional
 	 */
 	private List<MaxHierarchy> DFS(Table root,boolean[]explored) {
 		List<MaxHierarchy> result = new ArrayList<MaxHierarchy>();
 		List<ForeignKey> up = root.getAllforeignKeys();
-		explored[root.getId()] = true;
 		
-		if(up.isEmpty()){// is maximal
+		if(up.isEmpty() || explored[root.getId()]){// is maximal
 			MaxHierarchy maxH = new MaxHierarchy();
-			maxH.addNode(root);
+			maxH.addNode(new HierarchyNode(root,null));
 			result.add(maxH);
+			explored[root.getId()] = false;
 			return result;
 		}
 		
+		explored[root.getId()] = true;
+		
 		for(ForeignKey fk : up){
 			Table t = graph.getNode(fk.getRefTable());
-			
 			if(!explored[t.getId()]){
 				List<MaxHierarchy> branchResult = DFS(t,explored);
 				
-				for(MaxHierarchy mh : branchResult)
-					mh.addNode(root);
+				for(MaxHierarchy mh : branchResult){
+					mh.addNode(new HierarchyNode(root,fk));
+				}
 				
 				result.addAll(branchResult);
 			}
-			
-			
 		}
 		
+		explored[root.getId()] = false;
 		return result;
 		
 	}
-
-
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
 	
 }

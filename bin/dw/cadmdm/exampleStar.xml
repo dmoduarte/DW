@@ -3,23 +3,40 @@
 <model type = "MDM">
 	<Dimensions>
 		<Dimension name = "Dimension_B" idRef = "1">
-		 <attribute name = "attributeD1" type = "char"/>
-		 <attribute name = "attributeD2" type = "char"/>
+		
+		<Hierachy>
+			 <Level id = "ID_District">
+				 <Column AliasName="address.district" OLTPName="district" Source="address" Type="VARCHAR"/>
+			 	 <Column AliasName="address.district" OLTPName="district" Source="address" Type="VARCHAR"/>
+			 </Level>
+			 
+			 <Level id = "ID_City">
+				 <Column AliasName="address.city" OLTPName="city" Source="address" Type="VARCHAR"/>
+			 	 <Column AliasName="address.city" OLTPName="city" Source="address" Type="VARCHAR"/>
+			 </Level>
+		 </Hierachy>
+		 
+		 
+		 <PrimaryKeys>
+		 	<PrimaryKey AliasName="" OLTPName="customer_id" Source="customer" Type="PRIMARY"/>
+		 </PrimaryKeys>
+		 
 		</Dimension>	
 	</Dimensions>
-	<schema id = "1">
+	<facts>
 		<factTable name = "Fact_TableA">
 			
 			<metrics>
-			     <attribute name= "amount" aggregator = "SUM"/>
+			     <attribute name= "amount" aggregator = "SUM" type = "int" expression = ""/>
+			     <attribute name= "average" aggregator = "AVG" type = "int" expression = "AVG(amount)"/>
 			</metrics>
 			
-			<DimensionUsage idRef = "1">
+			<DimensionUsage ref = "Dimension_B">
 				<level id = "attributeD1" type = "int" aggregator = "SUM"/>
 			</DimensionUsage>
 	
 		</factTable>
-	</schema>
+	</facts>
 </model>
 
 <!--

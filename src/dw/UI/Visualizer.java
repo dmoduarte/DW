@@ -7,15 +7,17 @@ import java.awt.GridLayout;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
-import javax.swing.ImageIcon;
 import javax.swing.JButton;
-import javax.swing.JDialog;
+import javax.swing.JFileChooser;
+import javax.swing.JInternalFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenuBar;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
+import javax.swing.JPasswordField;
 import javax.swing.JPopupMenu;
+import javax.swing.JSplitPane;
 import javax.swing.JTextField;
 import javax.swing.JToolBar;
 
@@ -27,6 +29,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.util.ArrayList;
 import java.util.List;
 
 public class Visualizer extends JFrame {
@@ -36,9 +39,8 @@ public class Visualizer extends JFrame {
 	 */
 	private static final long serialVersionUID = 1L;
 	private UITree tree;
-	//private mxGraphComponent presentationModel;
 	private MouseListener l;
-	private Controler app;
+	
 
 	/**
 	 * Launch the application.
@@ -60,23 +62,17 @@ public class Visualizer extends JFrame {
 	 * Create the frame.
 	 */
 	public Visualizer() {
-		
-		app = new Controler();
-		tree = new UITree(this);
 		l = null;
+		tree = new UITree(this);
 		loadData();
 		modelPresentation();
-	
 	}
 	
 	private void loadData(){
 		try {
-			List<Table> tables = app.extractMetaData();
-			app.initGraph(tables);
-			tree.modelPanel.startModel(app.graph);
-			tree.loadSchemaTree();
-			//loadGraph(tree.getModelPresentationPane());
-			//loadSchemaTree(tree.getSchemaPanel());
+			tree.app.initGraph(new ArrayList<Table>());
+			tree.modelPanel.startModel(tree.app.graph);
+			tree.schemaTree.loadTree(tree.app.graph);
 		} catch (Exception e1) {
 			e1.printStackTrace();
 		}
@@ -84,28 +80,37 @@ public class Visualizer extends JFrame {
 
 
 	private void modelPresentation() {
-		l = null;
-	
+		this.setTitle("CADMDM: 1/3 Presentation Phase");
+		tree.nextButton.removeMouseListener(l);
+		tree.initNextButtonPaneContainer();
 		tree.nextButton.addMouseListener(l = new MouseAdapter() {
 			@Override
 			public void mouseClicked(MouseEvent e) {
 				
 				tree.nextButton.removeMouseListener(l);
-				tree.setLoadingSpin();
-				int trFound = app.classify();
-				if(trFound == 0){
-					tree.setErrorDialog(UITree.NOTRANSACTIONFOUND);
-					}
-				tree.unsetLoadingSpin();
-				classifPresentation(trFound);
+				
+				if(tree.app.graph.getIdDictionary().isEmpty()){
+					tree.setInfoDialog("No model found");
+					modelPresentation();
+				}
+				
+				else{
+					int trFound = tree.app.classify();
+					if(trFound == 0){
+						tree.setErrorDialog(UITree.NOTRANSACTIONFOUND);
+						}
+					classifPresentation(trFound);
+				}
+				
 			}
 		});
-		
 		
 	}
 	
 	private void classifPresentation(final int foundTransactions){
+		this.setTitle("CADMDM: 2/3 Classification Phase");
 		tree.nextButton.removeMouseListener(l);
+		tree.initNextButtonPaneContainer();
 		tree.modelPanel.refreshModel();
 		
 		tree.nextButton.addMouseListener( l = new MouseAdapter() {
@@ -117,65 +122,75 @@ public class Visualizer extends JFrame {
 					tree.setErrorDialog(UITree.NOTRANSACTIONFOUND);
 					classifPresentation(foundTransactions);
 					}else{
-						tree.setLoadingSpin();
-						List<String> msgs = app.checkClassification();
+						List<String> msgs = tree.app.checkClassification();
 						if(!msgs.isEmpty()){
-							tree.unsetLoadingSpin();
 							tree.showWarningMessages(msgs);
 							classifPresentation(foundTransactions);
 						}
 						else{
-							app.computeHierarchies();
-							app.colapse();
-							tree.unsetLoadingSpin();
+							tree.app.computeHierarchies();
+							tree.app.colapse();
 							colapsePresentation();
 						}
-						
 				}
 			}
 
 		});
-		
-		
 	}
 	
 	
 	private void colapsePresentation() {
+		this.setTitle("CADMDM: 3/3 Derivation Phase");
 		tree.nextButton.removeMouseListener(l);
+		tree.initFinishButtonPaneContainer();
+		tree.schemaTree.reload(tree.app.graph);
+		tree.modelPanel.restartModel(tree.app.graph);
 		
-		tree.modelPanel.refreshModel();
 		
+		tree.nextButton.addActionListener(new ActionListener(){
+			public void actionPerformed(ActionEvent arg0) {
+				tree.initExitFrame();
+			} 
+		});
 		
 	}
 	
-	
-	
 	class UITree{
 		
-		public static final int FRAMEWIDTH = 1200;
-		public static final int FRAMEHEIGHT = 700;
+		public static final int FRAMEWIDTH = 900; //1220
+		public static final int FRAMEHEIGHT = 600; //1200
 		public static final int TRANSACTIONALMENU = 0;
 		public static final int NONTRANSACTIONALMENU = 1;
+		public static final int NONCLASSIFIEDMENU = 2;
+		public static final int AGGMENU = 3;
 		public static final String NOTRANSACTIONFOUND = "0 Transactional tables were found. User input is required";
 		
-		waitDialog dial;
-		warningDialog warDial;
+		Controler app;
 		JFrame frame;
 		modelPanel modelPanel;
+		SchemaTree schemaTree;
 		JPanel contentPane;
-		JPanel schemaPanel;
+		JInternalFrame mboxFrame;
 		JPopupMenu pmenu;
 		JMenuItem transactionalSet;
 		JMenuItem transactionalRemove;
 		JMenuItem transactionalUnset;
+		JMenuItem nonclassifiedRemove;
+		JMenuItem aggregationSet;
+		JMenuItem functionsSet;
+		JMenuItem nameSet;
+		JFileChooser browser;
 		JPanel nextpanel;
 		JButton nextButton;
 		
+		
 		//Init UI Components
 		public UITree(JFrame frame){
+			app = new Controler();
 			this.frame = frame;
+			
 			//Init JFrame
-			frame.setResizable(false);
+			frame.setResizable(true);
 			frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 			frame.setBounds(0, 0, FRAMEWIDTH, FRAMEHEIGHT);
 			
@@ -185,14 +200,15 @@ public class Visualizer extends JFrame {
 		}
 		
 		public void initContent() {
+
 			this.contentPane = new JPanel();
 			this.contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 			frame.setContentPane(contentPane);
-			this.contentPane.setLayout(null);	
+			
+			this.contentPane.setLayout(new BorderLayout());	
 			
 			JToolBar toolBar = new JToolBar();
-			toolBar.setBounds(0, 0, (int) Math.round(0.08*FRAMEWIDTH), (int) Math.round(0.04*FRAMEHEIGHT));
-			this.contentPane.add(toolBar);
+			this.contentPane.add(toolBar,BorderLayout.NORTH);
 			
 			JMenuBar menuBar = new JMenuBar();
 			toolBar.add(menuBar);
@@ -200,26 +216,48 @@ public class Visualizer extends JFrame {
 			JMenu mnOptions = new JMenu("Options");
 			menuBar.add(mnOptions);
 			
-			JMenuItem mntmImportMetadata = new JMenuItem("Import MetaData");
+			JMenuItem mntmImportMetadata = new JMenuItem("Import from DB");
 			mnOptions.add(mntmImportMetadata);
 			
-			initNextButtonPaneContainer();
+			JMenuItem mntmImportXML = new JMenuItem("Import from XML");
+			mnOptions.add(mntmImportXML);
+			
+			JMenuItem mntmSaveXML = new JMenuItem("Save to XML");
+			mnOptions.add(mntmSaveXML);
+			
+			mntmImportXML.addActionListener(new OpenXML());
+			mntmSaveXML.addActionListener(new SaveXML());
+			mntmImportMetadata.addActionListener(new ActionListener(){
+				public void actionPerformed(ActionEvent arg0) {
+					initLoadDBMenu();
+				} 
+			});
+			
+			nextpanel = new JPanel();
+			JPanel container = new JPanel();
+			container.setLayout(new BorderLayout());
+			
+			nextButton = new JButton("Next");
+			nextpanel.add(nextButton);
+			container.add(nextpanel,BorderLayout.SOUTH);
+			contentPane.add(container, BorderLayout.EAST);
+			
+			
 		}
 		
 		public void initModelPanel() {
-			this.modelPanel = new modelPanel(app,this);
-			this.schemaPanel = new JPanel();
 			
-			this.modelPanel.setBounds(270,1,910, 600);
-			this.schemaPanel.setBounds(0,30,290,570);
-			this.contentPane.add(modelPanel);
-			this.contentPane.add(schemaPanel);
+			this.modelPanel = new modelPanel(this);
+			this.schemaTree = new SchemaTree(this);
+		
+		    JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
+	                true, schemaTree, modelPanel);
+		    
+	        splitPane.setOneTouchExpandable(true);
+	        this.contentPane.add(splitPane,BorderLayout.CENTER);
 			
 		}
 		
-		public void loadSchemaTree() {
-			new SchemaTree(app.graph,schemaPanel);
-		}
 		
 		public void initPmenu(int menu) {
 			
@@ -234,116 +272,245 @@ public class Visualizer extends JFrame {
 				transactionalSet = new JMenuItem("Set to Transaction");
 				pmenu.add(transactionalSet);
 			}
+			else if(menu == NONCLASSIFIEDMENU){
+				nonclassifiedRemove = new JMenuItem("Remove Entity");
+				pmenu.add(nonclassifiedRemove);
+				
+				transactionalSet = new JMenuItem("Set to Transaction");
+				pmenu.add(transactionalSet);
+			}else if(menu == AGGMENU){
+				aggregationSet = new JMenuItem("New Aggregate");
+				pmenu.add(aggregationSet);
+				
+				functionsSet = new JMenuItem("Edit Functions");
+				pmenu.add(functionsSet);
+				
+				nameSet = new JMenuItem("Change Name");
+				pmenu.add(nameSet);
+			}
+			
+		}
+		
+		public void setInfoDialog(String msg){
+			JOptionPane.showMessageDialog(frame,msg);
 		}
 		
 		public void setErrorDialog(String msg){
-			//new InfoDialog(msg);
 			JOptionPane.showMessageDialog(frame,msg,"",JOptionPane.ERROR_MESSAGE);
 		}
 		
 
 		public void initNextButtonPaneContainer() {
-			nextpanel = new JPanel();
-			nextpanel.setBounds(1000, 650, 153, 50);
+			nextpanel.remove(nextButton);
 			nextButton = new JButton("Next");
 			nextpanel.add(nextButton);
-			contentPane.add(nextpanel);
-			//next.setBounds(770, 610, 111, 23);
+			nextpanel.repaint();
+			nextpanel.revalidate();
+			repaint();
+			revalidate();
+		}
+		
+		public void initFinishButtonPaneContainer() {
+			nextpanel.remove(nextButton);
+			nextButton = new JButton("Finish");
+			nextpanel.add(nextButton);
+			nextpanel.repaint();
+			nextpanel.revalidate();
+			repaint();
+			revalidate();
+		}
+		
+		
+		public void initExitFrame(){
+			new exitFrame();
+		}
+		
+		public void initLoadDBMenu(){
+			new loadDBFrame();
 		}
 		
 		public void showWarningMessages(List<String> msgs){
-			//this.warDial = new warningDialog(msg);
 			String res = "";
 			for(String msg:msgs){
 				res += msg; 
 			}
-			JOptionPane.showMessageDialog(frame,res,"",JOptionPane.ERROR_MESSAGE);
-		}
-		
-		public void setLoadingSpin(){
-			this.dial = new waitDialog();
-		}
-		
-		public void unsetLoadingSpin(){
-			this.dial.unset();
-		}
-		
-		
-		public JPanel getContentPane(){
-			return this.contentPane;
+			JOptionPane.showMessageDialog(frame,res,"User input required",JOptionPane.ERROR_MESSAGE);
 		}
 		
 		public JButton getNextPanelButton(){
 			return this.nextButton;
 		}
 		
+		class OpenXML implements ActionListener {
+		    public void actionPerformed(ActionEvent e) {
+		      JFileChooser c = new JFileChooser();
+		      int rVal = c.showOpenDialog(frame);
+		      if (rVal == JFileChooser.APPROVE_OPTION) {
+		    	  app = new Controler();
+		    	  int state = app.loadXML(c.getCurrentDirectory().toString()+"/"+c.getSelectedFile().getName());
+		    	 if(state < 0 || state > app.CLASSIFICATION)
+		    		 setErrorDialog("Failed Loading XML");
+		    	 else{
+		    		 
+		    		 tree.schemaTree.reload(app.graph);
+		    		 tree.modelPanel.restartModel(app.graph);
+		    		 setInfoDialog("Model loaded!");
+		    		 
+		    		 if(app.state == app.PRESENTATION)
+		    			 modelPresentation();
+		    		 else if(app.state == app.CLASSIFICATION)
+		    			 classifPresentation(app.graph.transactionalEntitites().size());
+		    		 else if(app.state == app.COLAPSING)
+		    			 colapsePresentation();
+		    		 
+		    	 }
+		      }
+		      if (rVal == JFileChooser.CANCEL_OPTION) {
+		      }
+		    }
+		  }
+
+		  class SaveXML implements ActionListener {
+		    public void actionPerformed(ActionEvent e) {
+		      JFileChooser c = new JFileChooser();
+		      int rVal = c.showSaveDialog(frame);
+		      if (rVal == JFileChooser.APPROVE_OPTION) {
+		    	if(!app.saveToXML(app.graph,c.getCurrentDirectory().toString()+"/"+c.getSelectedFile().getName()))
+		    		setErrorDialog("Failed saving Model to XML");
+		    	else setInfoDialog("XML file saved!");
+		      }
+		      if (rVal == JFileChooser.CANCEL_OPTION) {
+		      }
+		    }
+		  }
+		  
+		  
+		  class GenScript implements ActionListener {
+			    public void actionPerformed(ActionEvent e) {
+			      JFileChooser c = new JFileChooser();
+			      int rVal = c.showSaveDialog(frame);
+			      if (rVal == JFileChooser.APPROVE_OPTION) {
+			    	if(!app.generateScript(app.graph,c.getCurrentDirectory().toString()+"/"+c.getSelectedFile().getName()))
+			    		setErrorDialog("Failed generating SQL script");
+			    	
+			    	else setInfoDialog("Script generated!");
+			      }
+			      if (rVal == JFileChooser.CANCEL_OPTION) {
+			      }
+			    }
+			  }
 		
-		public JPanel getSchemaPanel(){
-			return this.schemaPanel;
-		}
-		
-		class waitDialog extends JDialog{
-			/**
-			 * 
-			 */
-			public static final long serialVersionUID = -6730979993111146504L;
-			ImageIcon loading;
-			JLabel lab;
+		class exitFrame extends JFrame{
 			
-			public waitDialog(){
-				setUndecorated(true);
-				int dialogHeight = (int) Math.round(0.3*FRAMEHEIGHT);
-				int dialogWidth =  (int)Math.round(0.3*FRAMEWIDTH);
-			    int x = (int) Math.round(FRAMEWIDTH/2) - dialogWidth/2;
-				int y = (int) Math.round(FRAMEHEIGHT/2) - dialogHeight/2;
-				setBounds(x,y,dialogWidth,dialogHeight);
-				loading = new ImageIcon("icons/ajax-loader.gif");
-				lab = new JLabel("Please Wait... ", loading, JLabel.CENTER);
-				add(lab);
-				setVisible(true);
-			}
-			
-			public void unset(){
-				removeAll();
-				dispose();
-			}
-			
-		}
-		
-		class warningDialog extends JDialog implements ActionListener {
-			  /**
-			 * 
-			 */
 			public static final long serialVersionUID = 1360651079735275408L;
-			public warningDialog(final List<String> msgs) {
-				  
-				int dialogHeight = (int) Math.round(0.3*FRAMEHEIGHT);
-				int dialogWidth =  (int)Math.round(0.3*FRAMEWIDTH);
-			    int x = (int) Math.round(FRAMEWIDTH/2) - dialogWidth/2;
-				int y = (int) Math.round(FRAMEHEIGHT/2) - dialogHeight/2;
-				setBounds(x,y,dialogWidth,dialogHeight);
-			    setLayout(new GridLayout(msgs.size(),0));
-			  
-				for(String msg:msgs){
-					add(new JTextField(msg,JLabel.TRAILING));
-				}
+			public exitFrame() {
+				
+			    setLayout(new GridLayout(2,0));
+			    setLocationRelativeTo(tree.frame);
+			    JButton buttonScript = new JButton("Generate Script"); 
+			    buttonScript.addActionListener(new GenScript());
 			    
-			    JPanel buttonPane = new JPanel();
-			    JButton button = new JButton("OK"); 
-			    buttonPane.add(button); 
-			    button.addActionListener(this);
-			    getContentPane().add(buttonPane, BorderLayout.SOUTH);
-			    setDefaultCloseOperation(DISPOSE_ON_CLOSE);
-			    pack(); 
+			    JButton buttonXML = new JButton("Save XML"); 
+			    buttonXML.addActionListener(new SaveXML());
+			    
+			    add(buttonScript);
+			    add(buttonXML);
+			    pack();
 			    setVisible(true);
 			  }
-			  public void actionPerformed(ActionEvent e) {
-			    setVisible(false); 
-			    dispose(); 
-			  }
 			  
 			}
-		
+		class loadDBFrame extends JFrame {
+			JTextField login;
+			JPasswordField pw;
+			JTextField server,port,db;
+			int response;
+			
+			public static final int CANCEL = -1;
+			public static final int LOAD = 1;
+			
+			public static final long serialVersionUID = 1360651079735275408L;
+			
+			public loadDBFrame() {
+				
+				super("Load MetaData-MySQL");
+				setLocationRelativeTo(tree.frame);
+			    setLayout(new GridLayout(6,1));
+				
+			    JLabel loginLabel = new JLabel("Login: ");
+			    JLabel pwLabel = new JLabel("Password: ");
+			    JLabel servLabel = new JLabel("Server: ");
+			    JLabel portLabel = new JLabel("Port: ");
+			    JLabel dbLabel = new JLabel("DataBase: ");
+			    
+			    login = new JTextField();
+			    pw = new JPasswordField(10);
+			    server = new JTextField();
+			    port = new JTextField();
+			    db = new JTextField();
+			    
+			    //JPanel buttonPanel = new JPanel();
+			    //buttonPanel.setLayout(new GridLayout(0,2));
+			    JButton load = new JButton("Load");
+			    
+			    load.addActionListener(
+				new ActionListener(){
+					public void actionPerformed(ActionEvent arg0) {
+						
+						String logintxt = login.getText();
+						String pwtxt = new String(pw.getPassword());
+						String servertxt = server.getText();
+						String porttxt = port.getText();
+						String dbtxt = db.getText();
+						
+						if(logintxt != null && pwtxt != null && servertxt != null && porttxt != null && dbtxt != null)
+							if(!logintxt.equals("") && !pwtxt.equals("") && !servertxt.equals("") && !porttxt.equals("") && !dbtxt.equals("")){
+								
+								List<Table> extraction = app.extractMetaData(servertxt,porttxt,dbtxt,logintxt,pwtxt);
+								if( extraction == null )
+									tree.setErrorDialog("Failed Metadata Exctraction");
+								else{
+									app = new Controler();
+									app.initGraph(extraction);
+									app.graph.setModelName(dbtxt);
+									modelPanel.restartModel(app.graph);
+									schemaTree.reload(app.graph);
+									setInfoDialog("Metadata Loaded!");
+									modelPresentation();
+								}
+								
+							}else setInfoDialog("You did not fill all fields");
+						else setInfoDialog("You did not fill all fields");
+						
+						dispose();
+					}
+				});
+			    
+			    JButton cancel = new JButton("Cancel"); 
+			    cancel.addActionListener(
+			    new ActionListener(){
+					public void actionPerformed(ActionEvent arg0) {
+						System.out.println("Cancel");
+						dispose();
+					}
+			    });
+			    
+			    add(loginLabel);
+			    add(login);
+			    add(pwLabel);
+			    add(pw);
+			    add(servLabel);
+			    add(server);
+			    add(portLabel);
+			    add(port);
+			    add(dbLabel);
+			    add(db);
+			    add(cancel);
+			    add(load);
+			    pack();
+			    setVisible(true);
+			}
+		}
 		
 	}
 	

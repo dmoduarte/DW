@@ -2,12 +2,16 @@ package dw.cadmdm;
 
 import java.util.List;
 
-public class Dimension extends Table{
+public class Dimension extends Table {
+
+	private List<Attribute> hierarchies;
+	public Dimension(List<Attribute> hierarchies){
+		super();
+		this.hierarchies = hierarchies;
+	}
 	
-	private List<Attribute> lvlID;
-	public Dimension(List<Attribute> pks, List<Attribute> attrs, List<ForeignKey> fks, List<ExportedKey> exported,List<Attribute> lvlID,String name,int id){
-		super(pks,attrs,fks,exported,name,id);
-		this.lvlID = lvlID;
+	public List<Attribute> hierarchies(){
+		return hierarchies;
 	}
 	
 }

@@ -8,6 +8,7 @@ import java.awt.event.MouseEvent;
 import java.util.HashMap;
 import java.util.Map;
 
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 
 import com.mxgraph.layout.mxFastOrganicLayout;
@@ -20,7 +21,6 @@ import com.mxgraph.view.mxGraph;
 import com.mxgraph.view.mxStylesheet;
 
 import dw.UI.Visualizer.UITree;
-import dw.cadmdm.Controler;
 import dw.cadmdm.Graph;
 import dw.cadmdm.Table;
 
@@ -32,12 +32,10 @@ public class modelPanel extends JPanel {
 	 */
 	private static final long serialVersionUID = 4794363540800028266L;
 	mxCell [] v;
-	Controler app;
 	UITree tree;
 	public mxGraphComponent presentationModel;
 	
-	public modelPanel(Controler app, UITree tree){
-		this.app = app;
+	public modelPanel(UITree tree){
 		this.tree = tree;
 		setLayout(new BorderLayout());
 	}
@@ -49,12 +47,11 @@ public class modelPanel extends JPanel {
 	
 	public void restartModel(Graph g){
 		presentationModel = loadModel(g);
-		presentationModel = refreshModel();
-		//add(presentationModel,BorderLayout.CENTER);
-		 for(int i = 0 ; i < v.length; i++){
-		    	System.out.println("---");
-		    	System.out.println("-->"+v[i].getValue().toString());
-		    }
+		refreshModel();
+		removeAll();
+		add(presentationModel,BorderLayout.CENTER);
+		revalidate();
+		repaint();
 	}
 
 	public mxGraphComponent loadModel(Graph g) {
@@ -63,6 +60,7 @@ public class modelPanel extends JPanel {
 		if(g !=  null){
 			
 			Object parent = graph.getDefaultParent();
+			
 			v = new mxCell[g.getIdDictionary().size()];
 			
 			graph.getModel().beginUpdate();
@@ -74,7 +72,7 @@ public class modelPanel extends JPanel {
 					mxCell v1;
 					if(v[i] == null){
 					
-					v1 = (mxCell) graph.insertVertex(parent, null, g.getIdDictionary().get(i).getName(), 20, 20, 80,
+					v1 = (mxCell) graph.insertVertex(parent, null, g.getIdDictionary().get(i).getOperationalName(), 20, 20, 80,
 							30);
 					v1.setId(String.valueOf(i));
 					v[i] = v1;
@@ -100,7 +98,6 @@ public class modelPanel extends JPanel {
 								graph.insertEdge(parent, null, "", v2, v1);
 								relNum--;
 							}
-							//graph.insertEdge(parent, null, "", v1, v2);
 						}
 					}
 				}
@@ -111,6 +108,8 @@ public class modelPanel extends JPanel {
 				mxGraphLayout parallelEdgeLayout = new mxParallelEdgeLayout(graph);
 				organicLayout.execute(parent);
 				parallelEdgeLayout.execute(parent);
+				graph.orderCells(false, v);
+				
 				
 			    // Settings for edges
 			    Map<String, Object> edge = new HashMap<String, Object>();
@@ -156,31 +155,97 @@ public class modelPanel extends JPanel {
 		final mxGraphComponent graphComponent = new mxGraphComponent(graph);
 		graphComponent.getGraphControl().addMouseListener(
 			new MouseAdapter() {
+			
 			public void mouseClicked(MouseEvent e) {
-				if(app.state == app.CLASSIFICATION){
+				if(tree.app.state == tree.app.CLASSIFICATION){
 				final Object cell = graphComponent.getCellAt(e.getX(), e.getY());
 				if(cell != null && cell instanceof mxCell)
 					if(!(((mxCell)cell).getValue().toString()).equals("")){
-						Table t = app.graph.getNode(((mxCell)cell).getValue().toString());
+						Table t = tree.app.graph.getNode(((mxCell)cell).getValue().toString());
 						
 						if(t.isTransaction()){
 							displayTransactionMenu(e,cell);
-						}else{
+						}else if(!t.isClassified()){
+							displayDefaultMenu(e,cell);
+						}
+						else{
 							displayMenu(e,cell);
 						}
-						
-						
 					}
+				}else if(tree.app.state == tree.app.COLAPSING){
+					final Object cell = graphComponent.getCellAt(e.getX(), e.getY());
+					if(cell != null && cell instanceof mxCell)
+						if(!(((mxCell)cell).getValue().toString()).equals("")){
+							Table t = tree.app.graph.getNode(((mxCell)cell).getValue().toString());
+							
+							if(t != null && t.isFactTable()){
+								displayAggMenu(e,cell);
+							}
+							
+						}
 				}
 				}
-	
+			
+			private void displayAggMenu(MouseEvent e, final Object cell) {
+				tree.initPmenu(UITree.AGGMENU);
+				tree.pmenu.show(e.getComponent(), e.getX(), e.getY());
+				tree.aggregationSet.addActionListener(new ActionListener(){  
+					public void actionPerformed(ActionEvent e){
+						Table t = tree.app.graph.getNode(((mxCell)cell).getValue().toString());
+						new AggregateEditor(t,tree);
+				  	}
+				});
+				
+				tree.functionsSet.addActionListener(new ActionListener(){  
+					public void actionPerformed(ActionEvent e){
+						Table t = tree.app.graph.getNode(((mxCell)cell).getValue().toString());
+						new FunctionSelector(t,tree);
+					}	
+				  });
+				
+				tree.nameSet.addActionListener(new ActionListener(){  
+					public void actionPerformed(ActionEvent e){
+						Table t = tree.app.graph.getNode(((mxCell)cell).getValue().toString());
+						 String str = JOptionPane.showInputDialog(null, "Table new name : ", 
+								 "Change Name", 1);
+						   if(str != null && !str.equals("")){
+							   t.setName(str);
+							   refreshModel();
+							   tree.schemaTree.reload(tree.app.graph);
+						   }
+				  	}
+				});
+			}
+
 			private void displayMenu(MouseEvent e,final Object cell) {
 				tree.initPmenu(UITree.NONTRANSACTIONALMENU);
 				tree.pmenu.show(e.getComponent(), e.getX(), e.getY());
 				tree.transactionalSet.addActionListener(new ActionListener(){
 					  public void actionPerformed(ActionEvent e){
-						  app.classify( app.graph.getNode(((mxCell)cell).getValue().toString()) );
+						  tree.app.classify( tree.app.graph.getNode(((mxCell)cell).getValue().toString()) );
 						  refreshModel();
+						  tree.schemaTree.reload(tree.app.graph);
+					  	}
+					  });
+			}
+			
+			private void displayDefaultMenu(MouseEvent e,final Object cell) {
+				tree.initPmenu(UITree.NONCLASSIFIEDMENU);
+				tree.pmenu.show(e.getComponent(), e.getX(), e.getY());
+				tree.nonclassifiedRemove.addActionListener(new ActionListener(){
+					  public void actionPerformed(ActionEvent e){
+						  Table t = tree.app.graph.getNode(((mxCell)cell).getValue().toString());
+						  tree.app.removeTable(t);
+						  removeCell(v[t.getId()],t.getId());
+						  refreshModel();
+						  tree.schemaTree.reload(tree.app.graph);
+					  	}
+					  });
+				tree.transactionalSet.addActionListener(new ActionListener(){
+					  public void actionPerformed(ActionEvent e){
+						  tree.app.classify(tree.app.graph.getNode(((mxCell)cell).getValue().toString()) );
+						  refreshModel();
+						  tree.schemaTree.reload(tree.app.graph);
 					  	}
 					  });
 			}
@@ -191,26 +256,25 @@ public class modelPanel extends JPanel {
 				
 				tree.transactionalRemove.addActionListener(new ActionListener(){
 					  public void actionPerformed(ActionEvent e){
-						  tree.setLoadingSpin();
-						  Table t = app.graph.getNode(((mxCell)cell).getValue().toString());
-						  app.removeTable(t);
+						  Table t = tree.app.graph.getNode(((mxCell)cell).getValue().toString());
+						  tree.app.removeTable(t);
 						  removeCell(v[t.getId()],t.getId());
 						  refreshModel();
-						  tree.unsetLoadingSpin();
+						  tree.schemaTree.reload(tree.app.graph);
 					  	}
 	
 					 });
 				tree.transactionalUnset.addActionListener(new ActionListener(){
 					  public void actionPerformed(ActionEvent e){
-						  tree.setLoadingSpin();
-						  Table t = app.graph.getNode(((mxCell)cell).getValue().toString());
-						  app.unsetTable(t);;
+						  Table t = tree.app.graph.getNode(((mxCell)cell).getValue().toString());
+						  tree.app.unsetTable(t);
 						  refreshModel();
-						  tree.unsetLoadingSpin();
+						  tree.schemaTree.reload(tree.app.graph);
 					 	}
 				
 					});
 				}
+			
 			});
 		
 		//graphComponent.setSwimlaneSelectionEnabled(false);
@@ -243,7 +307,6 @@ public class modelPanel extends JPanel {
 	}
 	
 	
-	
 	public mxGraphComponent refreshModel(){
 		mxGraph g = presentationModel.getGraph();
 
@@ -251,39 +314,65 @@ public class modelPanel extends JPanel {
 		mxCell[]comp = new mxCell[v.length];
 		mxCell[]classif = new mxCell[v.length];
 		mxCell[]def = new mxCell[v.length];
+		mxCell[]dims = new mxCell[v.length];
+		mxCell[]factables = new mxCell[v.length];
 		
 		int count = 0;
-		for(int i = 0;i<app.getModel().getIdDictionary().size();i++){
-			Table t = app.getModel().getIdDictionary().get(i);
+		for(int i = 0;i<tree.app.getModel().getIdDictionary().size();i++){
+			Table t = tree.app.getModel().getIdDictionary().get(i);
 			if(t.isTransaction()){
 				transac[count] = v[i];
+				v[i].setValue(t.getName());
 				count++;
 			}
 		}
 		
 		count = 0;
-		for(int i = 0;i<app.getModel().getIdDictionary().size();i++){
-			Table t = app.getModel().getIdDictionary().get(i);
+		for(int i = 0;i<tree.app.getModel().getIdDictionary().size();i++){
+			Table t = tree.app.getModel().getIdDictionary().get(i);
 			if(t.isComponent()){
 				comp[count] = v[i];
+				v[i].setValue(t.getName());
 				count++;
 			}
 		}
 		
 		count = 0;
-		for(int i = 0;i<app.getModel().getIdDictionary().size();i++){
-			Table t = app.getModel().getIdDictionary().get(i);
+		for(int i = 0;i<tree.app.getModel().getIdDictionary().size();i++){
+			Table t = tree.app.getModel().getIdDictionary().get(i);
 			if(t.isClassifier()){
 				classif[count] = v[i];
+				v[i].setValue(t.getName());
 				count++;
 			}
 		}
 		
 		count = 0;
-		for(int i = 0;i<app.getModel().getIdDictionary().size();i++){
-			Table t = app.getModel().getIdDictionary().get(i);
+		for(int i = 0;i<tree.app.getModel().getIdDictionary().size();i++){
+			Table t = tree.app.getModel().getIdDictionary().get(i);
+			if(t.isDimension()){
+				dims[count] = v[i];
+				v[i].setValue(t.getName());
+				count++;
+			}
+		}
+		
+		count = 0;
+		for(int i = 0;i<tree.app.getModel().getIdDictionary().size();i++){
+			Table t = tree.app.getModel().getIdDictionary().get(i);
+			if(t.isFactTable()){
+				factables[count] = v[i];
+				v[i].setValue(t.getName());
+				count++;
+			}
+		}
+		
+		count = 0;
+		for(int i = 0;i<tree.app.getModel().getIdDictionary().size();i++){
+			Table t = tree.app.getModel().getIdDictionary().get(i);
 			if(!t.isClassified()){
 				def[count] = v[i];
+				v[i].setValue(t.getName());
 				count++;
 			}
 		}
@@ -291,7 +380,9 @@ public class modelPanel extends JPanel {
 		
 		g.setCellStyles(mxConstants.STYLE_FILLCOLOR, "red", transac);
 		g.setCellStyles(mxConstants.STYLE_FILLCOLOR, "green", comp);
+		g.setCellStyles(mxConstants.STYLE_FILLCOLOR, "green", dims);
 		g.setCellStyles(mxConstants.STYLE_FILLCOLOR, "blue", classif);
+		g.setCellStyles(mxConstants.STYLE_FILLCOLOR, "gold", factables);
 		g.setCellStyles(mxConstants.STYLE_FILLCOLOR, "snow", def);
 		//g.setCellStyles(mxConstants.STYLE_OPACITY, "20", classif);
 		g.refresh();
@@ -310,10 +401,5 @@ public class modelPanel extends JPanel {
 					}
 				}
 			    v = newV;
-			    for(int i = 0 ; i < v.length; i++){
-			    	System.out.println("---");
-			    	System.out.println("-->"+v[i].getValue().toString());
-			    }
 			}
-	
 }

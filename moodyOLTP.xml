@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<Model state="0" type="OLTP">
+	<Tables>
+		<Table AliasName="" Name="Customer" classification="none">
+			<Columns>
+				<Column AliasName="" Name="Cust_Name" Size="355" Source="Customer"
+					Type="VARCHAR" />
+			</Columns>
+			<PrimaryKeys>
+				<PrimaryKey AliasName="" Name="Cust_Id" Size="10" Source="Customer"
+					Type="INT" />
+			</PrimaryKeys>
+			<ForeignKeys>
+				<ForeignKey AliasName="" Name="Cust_Type_Id"
+					ReferenceTable="Customer_Type" ReferenceTableAttribute="Cust_Type_Id"
+					Size="10" Type="INT" />
+				<ForeignKey AliasName="" Name="Cust_Regn_Id"
+					ReferenceTable="Region" ReferenceTableAttribute="Regn_Id" Size="10"
+					Type="INT" />
+			</ForeignKeys>
+			<ExportedKeys>
+				<ExportedKey DestinationTable="Sales"
+					DestinationTableFK="Cust_Id" />
+			</ExportedKeys>
+		</Table>
+		<Table AliasName="" Name="Customer_Type" classification="none">
+			<Columns>
+				<Column AliasName="" Name="Cust_Type_Name" Size="100"
+					Source="Customer_Type" Type="VARCHAR" />
+			</Columns>
+			<PrimaryKeys>
+				<PrimaryKey AliasName="" Name="Cust_Type_Id" Size="10"
+					Source="Customer_Type" Type="INT" />
+			</PrimaryKeys>
+			<ForeignKeys />
+			<ExportedKeys>
+				<ExportedKey DestinationTable="Customer"
+					DestinationTableFK="Cust_Type_Id" />
+			</ExportedKeys>
+		</Table>
+		<Table AliasName="" Name="Location" classification="none">
+			<Columns>
+				<Column AliasName="" Name="Loc_Name" Size="355" Source="Location"
+					Type="VARCHAR" />
+			</Columns>
+			<PrimaryKeys>
+				<PrimaryKey AliasName="" Name="Loc_Id" Size="10" Source="Location"
+					Type="INT" />
+			</PrimaryKeys>
+			<ForeignKeys>
+				<ForeignKey AliasName="" Name="Loc_Regn_Id"
+					ReferenceTable="Region" ReferenceTableAttribute="Regn_Id" Size="10"
+					Type="INT" />
+				<ForeignKey AliasName="" Name="Loc_Type_Id"
+					ReferenceTable="Location_Type" ReferenceTableAttribute="Loc_Type_Id"
+					Size="10" Type="INT" />
+			</ForeignKeys>
+			<ExportedKeys>
+				<ExportedKey DestinationTable="Sales"
+					DestinationTableFK="Loc_Id" />
+			</ExportedKeys>
+		</Table>
+		<Table AliasName="" Name="Location_Type" classification="none">
+			<Columns>
+				<Column AliasName="" Name="Lot_Type_Name" Size="100"
+					Source="Location_Type" Type="VARCHAR" />
+			</Columns>
+			<PrimaryKeys>
+				<PrimaryKey AliasName="" Name="Loc_Type_Id" Size="10"
+					Source="Location_Type" Type="INT" />
+			</PrimaryKeys>
+			<ForeignKeys />
+			<ExportedKeys>
+				<ExportedKey DestinationTable="Location"
+					DestinationTableFK="Loc_Type_Id" />
+			</ExportedKeys>
+		</Table>
+		<Table AliasName="" Name="Period" classification="none">
+			<Columns>
+				<Column AliasName="" Name="Mth" Size="10" Source="Period"
+					Type="DATE" />
+				<Column AliasName="" Name="Qtr" Size="10" Source="Period"
+					Type="DATE" />
+				<Column AliasName="" Name="Yr" Size="10" Source="Period"
+					Type="DATE" />
+				<Column AliasName="" Name="Fiscal_Yr" Size="10" Source="Period"
+					Type="DATE" />
+			</Columns>
+			<PrimaryKeys>
+				<PrimaryKey AliasName="" Name="Date" Size="10" Source="Period"
+					Type="DATE" />
+			</PrimaryKeys>
+			<ForeignKeys />
+			<ExportedKeys>
+				<ExportedKey DestinationTable="Sales"
+					DestinationTableFK="Posted_Date" />
+				<ExportedKey DestinationTable="Sales"
+					DestinationTableFK="Sale_Date" />
+			</ExportedKeys>
+		</Table>
+		<Table AliasName="" Name="Region" classification="none">
+			<Columns>
+				<Column AliasName="" Name="Regn_Name" Size="355" Source="Region"
+					Type="VARCHAR" />
+			</Columns>
+			<PrimaryKeys>
+				<PrimaryKey AliasName="" Name="Regn_Id" Size="10" Source="Region"
+					Type="INT" />
+			</PrimaryKeys>
+			<ForeignKeys>
+				<ForeignKey AliasName="" Name="State_Id" ReferenceTable="State"
+					ReferenceTableAttribute="State_Id" Size="10" Type="INT" />
+			</ForeignKeys>
+			<ExportedKeys>
+				<ExportedKey DestinationTable="Customer"
+					DestinationTableFK="Cust_Regn_Id" />
+				<ExportedKey DestinationTable="Location"
+					DestinationTableFK="Loc_Regn_Id" />
+			</ExportedKeys>
+		</Table>
+		<Table AliasName="" Name="Sales" classification="none">
+			<Columns>
+				<Column AliasName="" Name="Discount_Amt" Size="10" Source="Sales"
+					Type="DECIMAL" />
+			</Columns>
+			<PrimaryKeys>
+				<PrimaryKey AliasName="" Name="Sale_Id" Size="10" Source="Sales"
+					Type="INT" />
+			</PrimaryKeys>
+			<ForeignKeys>
+				<ForeignKey AliasName="" Name="Cust_Id" ReferenceTable="Customer"
+					ReferenceTableAttribute="Cust_Id" Size="10" Type="INT" />
+				<ForeignKey AliasName="" Name="Sale_Date" ReferenceTable="Period"
+					ReferenceTableAttribute="Date" Size="10" Type="DATE" />
+				<ForeignKey AliasName="" Name="Posted_Date"
+					ReferenceTable="Period" ReferenceTableAttribute="Date" Size="10"
+					Type="DATE" />
+				<ForeignKey AliasName="" Name="Loc_Id" ReferenceTable="Location"
+					ReferenceTableAttribute="Loc_Id" Size="10" Type="INT" />
+			</ForeignKeys>
+			<ExportedKeys />
+		</Table>
+		<Table AliasName="" Name="State" classification="none">
+			<Columns>
+				<Column AliasName="" Name="State_Name" Size="100" Source="State"
+					Type="VARCHAR" />
+			</Columns>
+			<PrimaryKeys>
+				<PrimaryKey AliasName="" Name="State_Id" Size="10"
+					Source="State" Type="INT" />
+			</PrimaryKeys>
+			<ForeignKeys />
+			<ExportedKeys>
+				<ExportedKey DestinationTable="Region"
+					DestinationTableFK="State_Id" />
+			</ExportedKeys>
+		</Table>
+	</Tables>
+</Model>
