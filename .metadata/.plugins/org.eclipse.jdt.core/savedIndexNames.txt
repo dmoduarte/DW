@@ -1,1 +1,0 @@
-INDEX VERSION 1.127+/home/david/Dropbox/Mine/Escola/FCT 4º ano/2ºSemestre/DW/ProjectWorkspace/DWProject/.metadata/.plugins/org.eclipse.jdt.core
